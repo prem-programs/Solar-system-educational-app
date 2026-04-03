@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Educational 3D Solar System Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@200;400;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Background Canvas for Stars -->
+  <canvas id="starfield"></canvas>
+
+  <!-- 3D Parallax wrapper -->
+  <div class="parallax-container" id="parallax-container">
+
+    <!-- Central Solar Core -->
+    <div class="solar-system" id="solar-system">
+      <div class="core-sun"></div>
+
+      <!-- Orbit 1 (Mercury) -->
+      <div class="orbit orbit-1">
+        <div class="planet planet-1" data-name="Mercury" data-type="Terrestrial" data-radius="2,439.7 km"
+          data-mass="3.30 × 10²³ kg" data-gravity="3.7 m/s²" data-temp="167°C" data-day="59 Earth Days"
+          data-year="88 Earth Days"
+          data-facts="Temperatures swing from 430°C to -180°C.\nHas no moons or rings.\nIts surface is heavily cratered, similar to Earth's moon."
+          data-info="The smallest planet in our solar system and closest to the Sun. A rocky, cratered world lacking an atmosphere.">
+        </div>
+      </div>
+
+      <!-- Orbit 2 (Venus) -->
+      <div class="orbit orbit-2">
+        <div class="planet planet-2" data-name="Venus" data-type="Terrestrial" data-radius="6,051.8 km"
+          data-mass="4.86 × 10²⁴ kg" data-gravity="8.87 m/s²" data-temp="464°C" data-day="243 Earth Days"
+          data-year="225 Earth Days"
+          data-facts="It is the hottest planet in our solar system.\nVenus rotates backwards compared to most planets.\nIt has a crushingly thick atmosphere made primarily of carbon dioxide."
+          data-info="Spins slowly in the opposite direction from most planets. Covered by thick, toxic clouds of sulfuric acid.">
+        </div>
+      </div>
+
+      <!-- Orbit 3 (Earth) -->
+      <div class="orbit orbit-3">
+        <div class="planet planet-3" data-name="Earth" data-type="Terrestrial" data-radius="6,371 km"
+          data-mass="5.97 × 10²⁴ kg" data-gravity="9.8 m/s²" data-temp="15°C" data-day="24 Hours"
+          data-year="365.25 Days"
+          data-facts="The only planet known to harbor life.\nHas abundant liquid water on its surface.\nIts magnetic field protects the atmosphere from the solar wind."
+          data-info="Our home planet. The only place we know of so far that's inhabited by living things."></div>
+      </div>
+
+      <!-- Orbit 4 (Mars) -->
+      <div class="orbit orbit-4">
+        <div class="planet planet-4" data-name="Mars" data-type="Terrestrial" data-radius="3,389.5 km"
+          data-mass="6.41 × 10²³ kg" data-gravity="3.71 m/s²" data-temp="-65°C" data-day="24.6 Hours"
+          data-year="687 Earth Days"
+          data-facts="Its red color comes from iron oxide (rust) on its surface.\nHome to Olympus Mons, the largest volcano in the solar system.\nHas two small moons, Phobos and Deimos."
+          data-info="A dusty, cold, desert world with a very thin atmosphere. known as the Red Planet due to iron oxide.">
+        </div>
+      </div>
+
+      <!-- Orbit 5 (Jupiter) -->
+      <div class="orbit orbit-5">
+        <div class="planet planet-5" data-name="Jupiter" data-type="Gas Giant" data-radius="69,911 km"
+          data-mass="1.89 × 10²⁷ kg" data-gravity="24.79 m/s²" data-temp="-110°C" data-day="9.9 Hours"
+          data-year="11.8 Earth Years"
+          data-facts="It is the largest planet in our solar system.\nThe Great Red Spot is a giant storm larger than Earth.\nIt has 95 confirmed moons, including Ganymede."
+          data-info="More than twice as massive as the other planets of our solar system combined. Features the Great Red Spot.">
+        </div>
+      </div>
+
+      <!-- Orbit 6 (Saturn) -->
+      <div class="orbit orbit-6">
+        <div class="planet planet-6" data-name="Saturn" data-type="Gas Giant" data-radius="58,232 km"
+          data-mass="5.68 × 10²⁶ kg" data-gravity="10.44 m/s²" data-temp="-140°C" data-day="10.7 Hours"
+          data-year="29.4 Earth Years"
+          data-facts="Famous for its complex system of icy rings.\nIt is the least dense planet—it could float in water.\nHas the most moons of any planet, with 146 confirmed."
+          data-info="Adorned with a dazzling, complex system of icy rings. It's the least dense planet in the solar system.">
+        </div>
+      </div>
+
+      <!-- Orbit 7 (Uranus) -->
+      <div class="orbit orbit-7">
+        <div class="planet planet-7" data-name="Uranus" data-type="Ice Giant" data-radius="25,362 km"
+          data-mass="8.68 × 10²⁵ kg" data-gravity="8.69 m/s²" data-temp="-195°C" data-day="17.2 Hours"
+          data-year="84 Earth Years"
+          data-facts="It rotates on its side, practically rolling along its orbit.\nHas the coldest minimum atmospheric temperature.\nIts pale blue color is due to methane in its atmosphere."
+          data-info="Rotates at a nearly 90-degree angle from the plane of its orbit, appearing to spin on its side.">
+        </div>
+      </div>
+
+      <!-- Orbit 8 (Neptune) -->
+      <div class="orbit orbit-8">
+        <div class="planet planet-8" data-name="Neptune" data-type="Ice Giant" data-radius="24,622 km"
+          data-mass="1.02 × 10²⁶ kg" data-gravity="11.15 m/s²" data-temp="-200°C" data-day="16.1 Hours"
+          data-year="164.8 Earth Years"
+          data-facts="The farthest planet from the Sun.\nKnown for its supersonic wind storms.\nWas the first planet located through mathematical calculations rather than telescope discovery."
+          data-info="Dark, cold, and whipped by supersonic winds. It was the first planet located through mathematical calculations.">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- UI Overlay -->
+  <header class="glass-panel control-panel">
+    <h1>Solar System Explorer</h1>
+    <p>3D Educational Interactive Mode</p>
+
+
+    <div class="nav-section">
+      <h3>Select Destination:</h3>
+      <div class="planet-nav">
+        <button class="nav-btn" data-target="Mercury">Mercury</button>
+        <button class="nav-btn" data-target="Venus">Venus</button>
+        <button class="nav-btn" data-target="Earth">Earth</button>
+        <button class="nav-btn" data-target="Mars">Mars</button>
+        <button class="nav-btn" data-target="Jupiter">Jupiter</button>
+        <button class="nav-btn" data-target="Saturn">Saturn</button>
+        <button class="nav-btn" data-target="Uranus">Uranus</button>
+        <button class="nav-btn" data-target="Neptune">Neptune</button>
+      </div>
+    </div>
+  </header>
+
+  <aside class="glass-panel edu-panel" id="edu-panel">
+    <div class="panel-header">
+      <h2 id="planet-target">Solar System</h2>
+      <div id="planet-type" class="badge">View Mode</div>
+    </div>
+
+    <div class="divider"></div>
+    <p id="planet-desc">Click and drag in empty space to rotate the 3D galaxy. Select any celestial body to lock onto
+      its orbit and download telemetry data.</p>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-box">
+        <span class="stat-label">Radius</span> <span class="stat-value" id="planet-radius">N/A</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Mass</span> <span class="stat-value" id="planet-mass">N/A</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Gravity</span> <span class="stat-value" id="planet-gravity">N/A</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Avg Temp</span> <span class="stat-value" id="planet-temp">N/A</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Length of Day</span> <span class="stat-value" id="planet-day">N/A</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Length of Year</span> <span class="stat-value" id="planet-year">N/A</span>
+      </div>
+    </div>
+
+    <div class="facts-section" id="facts-section">
+      <h3>Educational Facts</h3>
+      <ul id="planet-facts">
+        <li>The solar system formed 4.6 billion years ago.</li>
+        <li>Select a planet to expand educational facts.</li>
+      </ul>
+    </div>
+
+    <button id="reset-view" class="reset-btn">Reset Overrides & View</button>
+  </aside>
+
+  <!-- Ambient light dust overlay -->
+  <div class="space-dust"></div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
