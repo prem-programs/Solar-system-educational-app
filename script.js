@@ -1,15 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // ─── Canvas Starfield ──────────────────────────────────────────────────────
-  const canvas = document.getElementById('starfield');
-  const ctx = canvas.getContext('2d');
-
+  // ─── 1. Starfield (2D Canvas) ──────────────────────────────────────────────
+  const sfCanvas = document.getElementById('starfield');
+  const ctx = sfCanvas.getContext('2d');
   let W, H;
   const NUM_STARS = 800;
   let stars = [];
 
   function resizeCanvas() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = sfCanvas.width = window.innerWidth;
+    H = sfCanvas.height = window.innerHeight;
     initStars();
   }
 
@@ -18,366 +17,289 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let i = 0; i < NUM_STARS; i++) {
       const baseAlpha = 0.25 + Math.random() * 0.55;
       stars.push({
-        x:       Math.random() * W,
-        y:       Math.random() * H,
-        r:       Math.random() * 1.2 + 0.3,
-        vx:      (Math.random() - 0.5) * 0.03,
-        vy:      (Math.random() - 0.5) * 0.03,
-        baseAlpha,
-        alpha:   baseAlpha,
-        phase:   Math.random() * Math.PI * 2,
-        freq:    0.0003 + Math.random() * 0.0005
+        x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.2 + 0.3,
+        vx: (Math.random() - 0.5) * 0.03, vy: (Math.random() - 0.5) * 0.03,
+        baseAlpha, alpha: baseAlpha, phase: Math.random() * Math.PI * 2,
+        freq: 0.0003 + Math.random() * 0.0005
       });
     }
   }
 
   function drawStars(ts) {
     ctx.clearRect(0, 0, W, H);
-
     for (let s of stars) {
-      s.x += s.vx;
-      s.y += s.vy;
-      if (s.x < 0)  s.x = W;
-      if (s.x > W)  s.x = 0;
-      if (s.y < 0)  s.y = H;
-      if (s.y > H)  s.y = 0;
-
-      // Smooth sine-based twinkle
+      s.x += s.vx; s.y += s.vy;
+      if (s.x < 0) s.x = W; if (s.x > W) s.x = 0;
+      if (s.y < 0) s.y = H; if (s.y > H) s.y = 0;
       s.alpha = s.baseAlpha + Math.sin(ts * s.freq + s.phase) * 0.18;
       s.alpha = Math.max(0.1, Math.min(0.9, s.alpha));
-    }
-
-    // Draw stars
-    for (let s of stars) {
       ctx.globalAlpha = s.alpha;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
     }
     ctx.globalAlpha = 1;
-  }
-
-  // ─── Main RAF loop ────────────────────────────────────────────────────────
-  function mainLoop(ts) {
-    drawStars(ts);
-    render3D();
-    requestAnimationFrame(mainLoop);
   }
 
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // ─── 3-D interaction state ─────────────────────────────────────────────────
+  // ─── 2. WebGL Setup (Three.js) ─────────────────────────────────────────────
+  const canvas = document.getElementById('webgl-canvas');
+  const scene = new THREE.Scene();
+
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(0, 0, 110);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Lights
+  const ambientLight = new THREE.AmbientLight(0x404040, 2);
+  scene.add(ambientLight);
+  const pointLight = new THREE.PointLight(0xffffff, 2.5, 300);
+  scene.add(pointLight);
+
+  // ─── 3. Solar System Bodies ────────────────────────────────────────────────
+  const planetMeshes = [];
+
+  // Sun (Simple Sphere)
+  const sunGeo = new THREE.SphereGeometry(6, 32, 32);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdf80 });
+  const sun = new THREE.Mesh(sunGeo, sunMat);
+  scene.add(sun);
+
+  // Data mapping from old DOM elements
+  const planetaryData = [
+    { name: 'Mercury', moons: '0', sunDistance: '58 Million km', distance: 11, size: 0.8, speed: 2 * Math.PI / 8, color: 0xc4c4c4, type: 'Terrestrial', radius: '2,439.7 km', mass: '3.30 × 10²³ kg', gravity: '3.7 m/s²', temp: '167°C', day: '59 Earth Days', year: '88 Earth Days', facts: "Temperatures swing wildly from 430°C in the day to -180°C at night.\nIt is the fastest planet, zipping around the Sun at 47 km per second.\nMercury has no atmosphere to trap heat or protect from meteorites.", info: "The smallest planet in our solar system and closest to the Sun." },
+    { name: 'Venus', moons: '0', sunDistance: '108 Million km', distance: 16, size: 1.2, speed: 2 * Math.PI / 14, color: 0xe8c690, type: 'Terrestrial', radius: '6,051.8 km', mass: '4.86 × 10²⁴ kg', gravity: '8.87 m/s²', temp: '464°C', day: '243 Earth Days', year: '225 Earth Days', facts: "It is the hottest planet in our solar system due to a runaway greenhouse effect.\nVenus rotates backwards, meaning the Sun rises in the west and sets in the east.\nA day on Venus is longer than its entire year!", info: "Spins slowly in the opposite direction from most planets." },
+    { name: 'Earth', moons: '1', sunDistance: '149.6 Million km', distance: 22, size: 1.5, speed: 2 * Math.PI / 22, color: 0x4b9fe3, type: 'Terrestrial', radius: '6,371 km', mass: '5.97 × 10²⁴ kg', gravity: '9.8 m/s²', temp: '15°C', day: '24 Hours', year: '365.25 Days', facts: "The only planet known to harbor life and have abundant liquid water.\nIts magnetic field protects our atmosphere from the harsh solar wind.\nOur atmosphere is 78% nitrogen and 21% oxygen.", info: "Our home planet. The only place inhabited by living things." },
+    { name: 'Mars', moons: '2', sunDistance: '228 Million km', distance: 29, size: 1.0, speed: 2 * Math.PI / 35, color: 0xff6b4a, type: 'Terrestrial', radius: '3,389.5 km', mass: '6.41 × 10²³ kg', gravity: '3.71 m/s²', temp: '-65°C', day: '24.6 Hours', year: '687 Earth Days', facts: "Its red appearance comes from rusted iron dust on its surface.\nHome to Olympus Mons, a volcano three times taller than Mount Everest.\nScientists have found evidence that liquid water once flowed here.", info: "A dusty, cold, desert world with a very thin atmosphere." },
+    { name: 'Jupiter', moons: '95', sunDistance: '778 Million km', distance: 40, size: 3.5, speed: 2 * Math.PI / 70, color: 0xd9a46c, type: 'Gas Giant', radius: '69,911 km', mass: '1.89 × 10²⁷ kg', gravity: '24.79 m/s²', temp: '-110°C', day: '9.9 Hours', year: '11.8 Earth Years', facts: "It is the largest planet—over 1,300 Earths could fit inside it!\nThe Great Red Spot is a persistent giant storm larger than our entire planet.\nJupiter's strong magnetic field creates massive, beautiful auroras at its poles.", info: "More than twice as massive as the other planets combined." },
+    { name: 'Saturn', moons: '146', sunDistance: '1.4 Billion km', distance: 54, size: 2.8, speed: 2 * Math.PI / 120, color: 0xe3cd8f, type: 'Gas Giant', radius: '58,232 km', mass: '5.68 × 10²⁶ kg', gravity: '10.44 m/s²', temp: '-140°C', day: '10.7 Hours', year: '29.4 Earth Years', facts: "Famous for its stunning, complex system of rings made of ice and rock.\nIt is the least dense planet—it could actually float in a giant bathtub of water!\nSaturn has the most moons in the solar system, with 146 confirmed.", info: "Adorned with a dazzling, complex system of icy rings.", hasRings: true },
+    { name: 'Uranus', moons: '28', sunDistance: '2.9 Billion km', distance: 68, size: 2.2, speed: 2 * Math.PI / 180, color: 0x8acbe8, type: 'Ice Giant', radius: '25,362 km', mass: '8.68 × 10²⁵ kg', gravity: '8.69 m/s²', temp: '-195°C', day: '17.2 Hours', year: '84 Earth Years', facts: "It rotates completely on its side, making it appear to roll along its orbit.\nUranus holds the record for the coldest minimum atmospheric temperature at -224°C.\nIts pale, icy blue color is caused by atmospheric methane absorbing red light.", info: "Rotates at a nearly 90-degree angle from the plane of its orbit." },
+    { name: 'Neptune', moons: '16', sunDistance: '4.5 Billion km', distance: 82, size: 2.0, speed: 2 * Math.PI / 250, color: 0x4371e8, type: 'Ice Giant', radius: '24,622 km', mass: '1.02 × 10²⁶ kg', gravity: '11.15 m/s²', temp: '-200°C', day: '16.1 Hours', year: '164.8 Earth Years', facts: "The farthest planet from the Sun, making it a dark, cold, and icy world.\nWhipped by supersonic wind storms that reach up to 2,000 km/h.\nIt was the first planet predicted by mathematical calculations rather than telescope discovery.", info: "Dark, cold, and whipped by supersonic winds." }
+  ];
+
+  const planetsGroup = new THREE.Group();
+  scene.add(planetsGroup);
+
+  planetaryData.forEach(p => {
+    // Add orbit line
+    const pathGeo = new THREE.RingGeometry(p.distance, p.distance + 0.15, 64);
+    const pathMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+    const orbitPath = new THREE.Mesh(pathGeo, pathMat);
+    scene.add(orbitPath);
+
+    // Planet
+    const pGeo = new THREE.SphereGeometry(p.size, 32, 32);
+    const pMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.6 });
+    const planetMesh = new THREE.Mesh(pGeo, pMat);
+
+    // Saturn rings
+    if (p.hasRings) {
+      const ringGeo = new THREE.RingGeometry(p.size * 1.4, p.size * 2.2, 32);
+      const ringMat = new THREE.MeshStandardMaterial({ color: p.color, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI / 2.5;
+      planetMesh.add(ringMesh);
+    }
+
+    const angle = Math.random() * Math.PI * 2;
+    planetMesh.position.set(Math.cos(angle) * p.distance, Math.sin(angle) * p.distance, 0);
+    planetMesh.userData = { ...p, currentAngle: angle, targetZ: 0 };
+
+    planetsGroup.add(planetMesh);
+    planetMeshes.push(planetMesh);
+  });
+
+  // ─── 4. Interaction & Camera Drag ──────────────────────────────────────────
   let isDragging = false;
-  let prevPos    = { x: 0, y: 0 };
+  let prevMousePos = { x: 0, y: 0 };
+  let targetRotX = -Math.PI / 3;
+  let targetRotZ = -Math.PI / 6;
 
-  let targetRotX  = 60,  currentRotX  = 60;
-  let targetRotZ  = -30, currentRotZ  = -30;
+  let currentZoom = 1.0;
+  let targetZoom = 1.0;
 
-  const BASE_ZOOM = 0.65;
-  let targetZoom  = BASE_ZOOM, currentZoom  = BASE_ZOOM;
-
-  let targetPanX  = 0, currentPanX  = 0;
-  let targetPanY  = 0, currentPanY  = 0;
-
-  const LERP_ROT  = 0.06;
-  const LERP_ZOOM = 0.05;
-  const LERP_PAN  = 0.06;
-
-  const solarSystem = document.getElementById('solar-system');
-  solarSystem.style.willChange = 'transform';
-
-  let isLocked          = false;
-  let lockedPlanetOrbit = null;
-  // The planet's position in the solar-system's LOCAL coordinate space (flat plane)
-  // captured at the instant of click, relative to the solar-system centre
-  let lockedWorldX = 0, lockedWorldY = 0;
-
-  // ─── Input handlers ────────────────────────────────────────────────────────
-  document.addEventListener('mousedown', (e) => {
-    if (!e.target.closest('.glass-panel') && !e.target.classList.contains('planet')) {
-      isDragging = true;
-      document.body.style.cursor = 'grabbing';
-      if (isLocked) resetView();
-    }
-    prevPos = { x: e.clientX, y: e.clientY };
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (isDragging && !isLocked) {
-      const dx = e.clientX - prevPos.x;
-      const dy = e.clientY - prevPos.y;
-      targetRotZ += dx * 0.35;
-      targetRotX -= dy * 0.35;
-      targetRotX = Math.max(10, Math.min(targetRotX, 85));
-    }
-    prevPos = { x: e.clientX, y: e.clientY };
-  });
-
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-    document.body.style.cursor = 'default';
-  });
-
-  // Touch support
-  let lastTouch = null;
-  document.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) {
-      lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      if (!e.target.classList.contains('planet') && !e.target.closest('.glass-panel')) {
-        if (isLocked) resetView();
-      }
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1 && lastTouch && !isLocked) {
-      const dx = e.touches[0].clientX - lastTouch.x;
-      const dy = e.touches[0].clientY - lastTouch.y;
-      targetRotZ += dx * 0.35;
-      targetRotX -= dy * 0.35;
-      targetRotX = Math.max(10, Math.min(targetRotX, 85));
-      lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, { passive: true });
+  scene.rotation.x = targetRotX;
+  scene.rotation.z = targetRotZ;
 
   document.addEventListener('wheel', (e) => {
     if (e.target.closest('.glass-panel')) return;
-    e.preventDefault();
-    if (!isLocked) {
-      const delta = e.deltaY < 0 ? 0.06 : -0.06;
-      targetZoom = Math.max(0.3, Math.min(targetZoom + delta, 2.5));
-    }
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    targetZoom = Math.max(0.4, Math.min(3.5, targetZoom + delta));
   }, { passive: false });
 
-  // ─── Helper: extract the rotation angle from an orbit's computed transform ──
-  // The orbit uses `animation: spin ...` which produces a matrix(cos, sin, -sin, cos, 0, 0)
-  // We extract the current angle from this.
-  function getOrbitAngle(orbitEl) {
-    const style = window.getComputedStyle(orbitEl);
-    const tr = style.transform || style.webkitTransform || 'none';
-    if (tr === 'none') return 0;
-
-    // matrix(a, b, c, d, tx, ty)
-    const match = tr.match(/matrix\(([^)]+)\)/);
-    if (!match) return 0;
-    const vals = match[1].split(',').map(Number);
-    const a = vals[0]; // cos(θ)
-    const b = vals[1]; // sin(θ)
-    return Math.atan2(b, a); // angle in radians
-  }
-
-  // ─── 3-D render tick ──────────────────────────────────────────────────────
-  function render3D() {
-    currentRotX += (targetRotX - currentRotX) * LERP_ROT;
-    currentRotZ += (targetRotZ - currentRotZ) * LERP_ROT;
-    currentZoom += (targetZoom - currentZoom) * LERP_ZOOM;
-
-    if (isLocked) {
-      // Rotate the world-space planet coords into screen space
-      const zRad = currentRotZ * (Math.PI / 180);
-      const xRad = currentRotX * (Math.PI / 180);
-
-      const x1 =  lockedWorldX * Math.cos(zRad) - lockedWorldY * Math.sin(zRad);
-      const y1 =  lockedWorldX * Math.sin(zRad) + lockedWorldY * Math.cos(zRad);
-      const y2 = y1 * Math.cos(xRad);
-
-      targetPanX = -x1 * currentZoom;
-      targetPanY = -y2 * currentZoom;
-    } else {
-      targetPanX = 0;
-      targetPanY = 0;
-    }
-
-    currentPanX += (targetPanX - currentPanX) * LERP_PAN;
-    currentPanY += (targetPanY - currentPanY) * LERP_PAN;
-
-    solarSystem.style.transform =
-      `translate(${currentPanX}px, ${currentPanY}px) ` +
-      `scale(${currentZoom}) ` +
-      `rotateX(${currentRotX}deg) ` +
-      `rotateZ(${currentRotZ}deg)`;
-  }
-
-  // ─── Educational UI ────────────────────────────────────────────────────────
-  const planets         = document.querySelectorAll('.planet');
-  const orbits          = document.querySelectorAll('.orbit');
-  const eduPanel        = document.getElementById('edu-panel');
-  const planetTarget    = document.getElementById('planet-target');
-  const planetType      = document.getElementById('planet-type');
-  const planetDesc      = document.getElementById('planet-desc');
-  const planetFacts     = document.getElementById('planet-facts');
-  const root            = document.documentElement;
-
-  const nodes = {
-    radius:  document.getElementById('planet-radius'),
-    mass:    document.getElementById('planet-mass'),
-    gravity: document.getElementById('planet-gravity'),
-    temp:    document.getElementById('planet-temp'),
-    day:     document.getElementById('planet-day'),
-    year:    document.getElementById('planet-year')
-  };
-
-  const PLANET_COLORS = {
-    Mercury: '#c4c4c4',
-    Venus:   '#e8c690',
-    Earth:   '#4b9fe3',
-    Mars:    '#ff6b4a',
-    Jupiter: '#d9a46c',
-    Saturn:  '#e3cd8f',
-    Uranus:  '#8acbe8',
-    Neptune: '#4371e8'
-  };
-
-  // Pre-built map of orbit radii (half the orbit width = distance from centre to planet)
-  const orbitRadii = {};
-  orbits.forEach(o => {
-    orbitRadii[o.className] = o.offsetWidth / 2;
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.tagName !== 'CANVAS') return;
+    isDragging = true;
+    prevMousePos = { x: e.clientX, y: e.clientY };
   });
 
-  function focusPlanet(planet) {
-    // Toggle off if already locked
-    if (isLocked && planet.classList.contains('locked')) {
-      resetView();
-      return;
+  document.addEventListener('pointermove', (e) => {
+    if (isDragging) {
+      const dx = e.clientX - prevMousePos.x;
+      const dy = e.clientY - prevMousePos.y;
+      targetRotZ += dx * 0.005;
+      targetRotX += dy * 0.005;
+      targetRotX = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, targetRotX));
+    }
+    prevMousePos = { x: e.clientX, y: e.clientY };
+  });
+
+  document.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+
+  // ─── 5. Raycasting & Click-to-Info ─────────────────────────────────────────
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let lockedPlanet = null;
+  const eduPanel = document.getElementById('edu-panel');
+  const readAloudBtn = document.getElementById('btn-read-aloud');
+
+  const synth = window.speechSynthesis;
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.tagName !== 'CANVAS') return;
+
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(planetMeshes);
+    if (intersects.length > 0) {
+      handlePlanetClick(intersects[0].object);
+    }
+  });
+
+  function handlePlanetClick(mesh) {
+    if (lockedPlanet && lockedPlanet !== mesh) {
+      lockedPlanet.userData.targetZ = 0;
     }
 
-    const orbit = planet.parentElement;
+    lockedPlanet = mesh;
+    // Jump animation 
+    lockedPlanet.userData.targetZ = 5.0;
+    setTimeout(() => {
+      if (lockedPlanet === mesh) lockedPlanet.userData.targetZ = 0;
+    }, 400);
 
-    // ── Step 1: Read orbit's CURRENT rotation angle BEFORE pausing ──────────
-    // This tells us exactly where the planet is on its circular path right now.
-    const orbitAngle = getOrbitAngle(orbit);
-    const orbitRadius = orbit.offsetWidth / 2;
+    targetZoom = 1.6;
 
-    // The planet sits at the LEFT edge of the orbit (CSS left: -Npx, top: 50%).
-    // In the orbit's un-rotated local frame, that's at (-orbitRadius, 0).
-    // After the orbit has rotated by `orbitAngle`, the position becomes:
-    const localX = -orbitRadius;
-    const localY = 0;
-    lockedWorldX = localX * Math.cos(orbitAngle) - localY * Math.sin(orbitAngle);
-    lockedWorldY = localX * Math.sin(orbitAngle) + localY * Math.cos(orbitAngle);
+    const data = mesh.userData;
 
-    // ── Step 2: Pause all animations ────────────────────────────────────────
-    isLocked = true;
-    lockedPlanetOrbit = orbit;
+    // UI Update
+    document.getElementById('planet-target').textContent = data.name;
+    document.getElementById('planet-type').textContent = data.type;
+    document.getElementById('planet-desc').textContent = data.info;
+    document.getElementById('planet-radius').textContent = data.radius;
+    document.getElementById('planet-mass').textContent = data.mass;
+    document.getElementById('planet-gravity').textContent = data.gravity;
+    document.getElementById('planet-temp').textContent = data.temp;
+    document.getElementById('planet-day').textContent = data.day;
+    document.getElementById('planet-year').textContent = data.year;
+    document.getElementById('planet-moons').textContent = data.moons;
+    document.getElementById('planet-distance').textContent = data.sunDistance;
 
-    planets.forEach(p => p.classList.remove('locked'));
-    planet.classList.add('locked');
+    const pColor = '#' + data.color.toString(16).padStart(6, '0');
+    document.getElementById('planet-type').style.color = pColor;
+    document.getElementById('planet-type').style.borderColor = pColor;
+    document.documentElement.style.setProperty('--neon-cyan', pColor);
 
-    // Pause and dim everything
-    document.querySelectorAll('.orbit').forEach(o => {
-      o.style.animationPlayState = 'paused';
-      if (o !== orbit) {
-        o.classList.add('dimmed');
-      }
-    });
-    document.querySelectorAll('.planet').forEach(p => {
-      p.style.animationPlayState = 'paused';
-      if (p !== planet) {
-        p.classList.add('dimmed');
-      }
-    });
-
-    // ── Step 3: Camera ──────────────────────────────────────────────────────
-    targetRotX = 55;
-
-    // Compute zoom: we want the planet to appear ~100-130px on screen
-    const planetSize = planet.offsetWidth;
-    const desiredScreenSize = 110;
-    const rawZoom = desiredScreenSize / Math.max(planetSize, 1);
-    targetZoom = Math.max(1.4, Math.min(3.8, rawZoom));
-
-    // ── Step 4: Populate panel ──────────────────────────────────────────────
-    const name = planet.dataset.name;
-    const color = PLANET_COLORS[name] || '#00f2fe';
-
-    planetTarget.textContent = name;
-    planetType.textContent   = planet.dataset.type;
-    planetDesc.textContent   = planet.dataset.info;
-
-    nodes.radius.textContent  = planet.dataset.radius;
-    nodes.mass.textContent    = planet.dataset.mass;
-    nodes.gravity.textContent = planet.dataset.gravity;
-    nodes.temp.textContent    = planet.dataset.temp;
-    nodes.day.textContent     = planet.dataset.day;
-    nodes.year.textContent    = planet.dataset.year;
-
-    const rawFacts = planet.dataset.facts || '';
+    const planetFacts = document.getElementById('planet-facts');
     planetFacts.innerHTML = '';
-    rawFacts.split('\\n').forEach(fact => {
-      if (!fact.trim()) return;
+    data.facts.split('\\n').forEach(val => {
+      if (!val.trim()) return;
       const li = document.createElement('li');
-      li.textContent = fact.trim();
+      li.textContent = val.trim();
       planetFacts.appendChild(li);
     });
 
-    // ── Step 5: Theme colour ────────────────────────────────────────────────
-    planetType.style.color       = color;
-    planetType.style.borderColor = color;
-    root.style.setProperty('--neon-cyan', color);
-    // Set highlight glow colour for the locked planet
-    root.style.setProperty('--planet-glow', color);
+    readAloudBtn.style.display = 'block';
 
-    // Active button state
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.target === name);
-    });
+    if (synth && synth.speaking) synth.cancel();
 
     eduPanel.classList.add('active');
   }
 
-  // ── Bind clicks ───────────────────────────────────────────────────────────
-  planets.forEach(p => {
-    p.addEventListener('click', (e) => {
-      e.stopPropagation();
-      focusPlanet(p);
-    });
-  });
-
+  // Bind side menu
   document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const target = document.querySelector(`.planet[data-name="${btn.dataset.target}"]`);
-      if (target) focusPlanet(target);
+    btn.addEventListener('click', () => {
+      const tName = btn.dataset.target;
+      const tMesh = planetMeshes.find(m => m.userData.name === tName);
+      if (tMesh) handlePlanetClick(tMesh);
     });
   });
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
-  function resetView() {
-    isLocked          = false;
-    lockedPlanetOrbit = null;
-    targetZoom  = BASE_ZOOM;
-    targetRotX  = 60;
-    targetRotZ  = -30;
-
-    planets.forEach(p => {
-      p.classList.remove('locked', 'dimmed');
-      p.style.animationPlayState = '';
-    });
-    document.querySelectorAll('.orbit').forEach(o => {
-      o.classList.remove('dimmed');
-      o.style.animationPlayState = '';
-    });
-
-    // Reset nav button active state
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-
-    planetTarget.textContent = 'Solar System';
-    planetType.textContent   = 'View Mode';
-    planetType.style.color       = '#00f2fe';
-    planetType.style.borderColor = '#00f2fe';
-    root.style.setProperty('--neon-cyan', '#00f2fe');
-    root.style.removeProperty('--planet-glow');
-
-    planetDesc.textContent = 'Click and drag in empty space to rotate the 3D galaxy. Select any celestial body to lock onto its orbit and view telemetry data.';
-    Object.values(nodes).forEach(n => (n.textContent = 'N/A'));
-    planetFacts.innerHTML = '<li>The solar system formed 4.6 billion years ago.</li><li>Select a planet to explore educational facts.</li>';
+  // Reset 
+  document.getElementById('reset-view').addEventListener('click', () => {
     eduPanel.classList.remove('active');
+    if (lockedPlanet) lockedPlanet.userData.targetZ = 0;
+    lockedPlanet = null;
+    targetZoom = 1.0;
+    readAloudBtn.style.display = 'none';
+    if (synth && synth.speaking) synth.cancel();
+
+    document.getElementById('planet-target').textContent = 'Solar System';
+    document.getElementById('planet-type').textContent = 'View Mode';
+    document.documentElement.style.setProperty('--neon-cyan', '#00f2fe');
+  });
+
+  // Read Aloud
+  readAloudBtn.addEventListener('click', () => {
+    if (!lockedPlanet || !synth) return;
+    synth.cancel();
+    const factText = lockedPlanet.userData.facts.replace(/\\n/g, ". ");
+    const utterance = new SpeechSynthesisUtterance(`${lockedPlanet.userData.name}. ${factText}`);
+    synth.speak(utterance);
+  });
+
+  // ─── 6. Render Loop ────────────────────────────────────────────────────────
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const ts = Date.now();
+    const delta = clock.getDelta();
+
+    drawStars(ts);
+
+    planetMeshes.forEach(mesh => {
+      const data = mesh.userData;
+      data.currentAngle -= data.speed * delta;
+
+      mesh.position.x = Math.cos(data.currentAngle) * data.distance;
+      mesh.position.y = Math.sin(data.currentAngle) * data.distance;
+
+      // Interpolate jumps
+      mesh.position.z += (data.targetZ - mesh.position.z) * 0.15;
+
+      // Self spin
+      mesh.rotation.x += 0.01;
+      mesh.rotation.y += 0.01;
+    });
+
+    // Lerp camera angle
+    scene.rotation.z += (targetRotZ - scene.rotation.z) * 0.08;
+    scene.rotation.x += (targetRotX - scene.rotation.x) * 0.08;
+
+    // Smooth Zoom
+    if (Math.abs(currentZoom - targetZoom) > 0.001) {
+      currentZoom += (targetZoom - currentZoom) * 0.1;
+      camera.zoom = currentZoom;
+      camera.updateProjectionMatrix();
+    }
+
+    renderer.render(scene, camera);
   }
 
-  document.getElementById('reset-view').addEventListener('click', resetView);
-
-  // ─── Kick off ──────────────────────────────────────────────────────────────
-  requestAnimationFrame(mainLoop);
+  animate();
 });
