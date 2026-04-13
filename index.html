@@ -11,6 +11,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@200;400;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="gooeyNav.css">
+  <link rel="stylesheet" href="glareHover.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 
@@ -30,26 +32,30 @@
 
     <div class="nav-section">
       <h3>Select Destination:</h3>
-      <div class="planet-nav">
-        <button class="nav-btn" data-target="Mercury">Mercury</button>
-        <button class="nav-btn" data-target="Venus">Venus</button>
-        <button class="nav-btn" data-target="Earth">Earth</button>
-        <button class="nav-btn" data-target="Mars">Mars</button>
-        <button class="nav-btn" data-target="Jupiter">Jupiter</button>
-        <button class="nav-btn" data-target="Saturn">Saturn</button>
-        <button class="nav-btn" data-target="Uranus">Uranus</button>
-        <button class="nav-btn" data-target="Neptune">Neptune</button>
-      </div>
+      <div id="gooey-nav-wrapper" style="position: relative; width: 100%; min-height: 180px;"></div>
     </div>
   </header>
 
   <aside class="glass-panel edu-panel" id="edu-panel">
     <div class="panel-header">
       <h2 id="planet-target">Solar System</h2>
+
+
       <div id="planet-type" class="badge">View Mode</div>
+      <button id="btn-read-aloud" class="reset-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <!-- Speaker -->
+          <polygon points="3 9 7 9 12 5 12 19 7 15 3 15"></polygon>
+          <!-- Sound waves -->
+          <path d="M16 8 C18 10, 18 14, 16 16"></path>
+          <path d="M19 5 C22 9, 22 15, 19 19"></path>
+        </svg>
+      </button>
     </div>
 
     <div class="divider"></div>
+
     <p id="planet-desc">Click and drag in empty space to rotate the 3D galaxy. Select any celestial body to lock onto
       its orbit and download telemetry data.</p>
 
@@ -86,9 +92,7 @@
         <li>The solar system formed 4.6 billion years ago.</li>
         <li>Select a planet to expand educational facts.</li>
       </ul>
-      <button id="btn-read-aloud" class="reset-btn"
-        style="margin-top: 10px; background: rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.4); color: #fff; display: none;">
-        Read Aloud Fact</button>
+
     </div>
 
     <button id="reset-view" class="reset-btn">Reset Overrides & View</button>
@@ -97,6 +101,8 @@
   <!-- Ambient light dust overlay -->
   <div class="space-dust"></div>
 
+  <script src="glareHover.js"></script>
+  <script src="gooeyNav.js"></script>
   <script src="script.js"></script>
 </body>
 

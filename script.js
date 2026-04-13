@@ -97,10 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const orbitPath = new THREE.Mesh(pathGeo, pathMat);
     scene.add(orbitPath);
 
-    // Planet
+    // Group to hold planet and UI elements
+    const pGroup = new THREE.Group();
+    const angle = Math.random() * Math.PI * 2;
+    pGroup.position.set(Math.cos(angle) * p.distance, Math.sin(angle) * p.distance, 0);
+
+    // Planet Mesh
     const pGeo = new THREE.SphereGeometry(p.size, 32, 32);
     const pMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.6 });
     const planetMesh = new THREE.Mesh(pGeo, pMat);
+    pGroup.add(planetMesh);
 
     // Saturn rings
     if (p.hasRings) {
@@ -111,11 +117,42 @@ document.addEventListener('DOMContentLoaded', () => {
       planetMesh.add(ringMesh);
     }
 
-    const angle = Math.random() * Math.PI * 2;
-    planetMesh.position.set(Math.cos(angle) * p.distance, Math.sin(angle) * p.distance, 0);
-    planetMesh.userData = { ...p, currentAngle: angle, targetZ: 0 };
+    // --- Highlighting Elements (Hidden by default) ---
+    // 1. Glowing Aura
+    const glowGeo = new THREE.SphereGeometry(p.size * 1.25, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: p.color,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide
+    });
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    glowMesh.visible = false;
+    pGroup.add(glowMesh);
 
-    planetsGroup.add(planetMesh);
+    // 2. 2D Target Ring (Faces Camera)
+    const ringTargetGeo = new THREE.RingGeometry(p.size * 1.6, p.size * 1.7, 64);
+    const ringTargetMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    const targetRing = new THREE.Mesh(ringTargetGeo, ringTargetMat);
+    targetRing.visible = false;
+    pGroup.add(targetRing);
+
+    // 3. 3D Sci-Fi Target Bracket (Octahedron Wireframe)
+    const bracketGeo = new THREE.EdgesGeometry(new THREE.OctahedronGeometry(p.size * 2.2));
+    const bracketMat = new THREE.LineBasicMaterial({ color: p.color, transparent: true, opacity: 0.8 });
+    const bracketMesh = new THREE.LineSegments(bracketGeo, bracketMat);
+    bracketMesh.visible = false;
+    pGroup.add(bracketMesh);
+
+    planetMesh.userData = { ...p, currentAngle: angle, pGroup, glowMesh, targetRing, bracketMesh };
+
+    planetsGroup.add(pGroup);
     planetMeshes.push(planetMesh);
   });
 
@@ -182,15 +219,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function handlePlanetClick(mesh) {
     if (lockedPlanet && lockedPlanet !== mesh) {
-      lockedPlanet.userData.targetZ = 0;
+      lockedPlanet.userData.glowMesh.visible = false;
+      lockedPlanet.userData.targetRing.visible = false;
+      lockedPlanet.userData.bracketMesh.visible = false;
     }
 
     lockedPlanet = mesh;
-    // Jump animation 
-    lockedPlanet.userData.targetZ = 5.0;
-    setTimeout(() => {
-      if (lockedPlanet === mesh) lockedPlanet.userData.targetZ = 0;
-    }, 400);
+    lockedPlanet.userData.glowMesh.visible = true;
+    lockedPlanet.userData.targetRing.visible = true;
+    lockedPlanet.userData.bracketMesh.visible = true;
 
     targetZoom = 1.6;
 
@@ -228,21 +265,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (synth && synth.speaking) synth.cancel();
 
     eduPanel.classList.add('active');
+
+    // Sync Gooey Nav visually when clicking on a 3D planet
+    const itemIndex = gooeyItems.findIndex(item => item.target === data.name);
+    if (itemIndex !== -1 && gooeyNavInstance) {
+      gooeyNavInstance.selectItemByIndex(itemIndex);
+    }
   }
 
-  // Bind side menu
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tName = btn.dataset.target;
+  // Bind side menu using GooeyNav
+  const gooeyItems = planetaryData.map(p => ({ label: p.name, target: p.name, href: '#' }));
+  const gooeyNavInstance = new GooeyNav('gooey-nav-wrapper', {
+    items: gooeyItems,
+    onSelect: (item) => {
+      const tName = item.target;
       const tMesh = planetMeshes.find(m => m.userData.name === tName);
       if (tMesh) handlePlanetClick(tMesh);
-    });
+    }
   });
 
   // Reset 
   document.getElementById('reset-view').addEventListener('click', () => {
     eduPanel.classList.remove('active');
-    if (lockedPlanet) lockedPlanet.userData.targetZ = 0;
+    if (lockedPlanet) {
+      lockedPlanet.userData.glowMesh.visible = false;
+      lockedPlanet.userData.targetRing.visible = false;
+      lockedPlanet.userData.bracketMesh.visible = false;
+    }
     lockedPlanet = null;
     targetZoom = 1.0;
     readAloudBtn.style.display = 'none';
@@ -251,6 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('planet-target').textContent = 'Solar System';
     document.getElementById('planet-type').textContent = 'View Mode';
     document.documentElement.style.setProperty('--neon-cyan', '#00f2fe');
+    
+    // Keeping the GooeyNav in its current position instead of clearing it completely
+    // so it doesn't 'fade' out when the view is rested/reset.
   });
 
   // Read Aloud
@@ -276,15 +328,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = mesh.userData;
       data.currentAngle -= data.speed * delta;
 
-      mesh.position.x = Math.cos(data.currentAngle) * data.distance;
-      mesh.position.y = Math.sin(data.currentAngle) * data.distance;
-
-      // Interpolate jumps
-      mesh.position.z += (data.targetZ - mesh.position.z) * 0.15;
+      data.pGroup.position.x = Math.cos(data.currentAngle) * data.distance;
+      data.pGroup.position.y = Math.sin(data.currentAngle) * data.distance;
 
       // Self spin
       mesh.rotation.x += 0.01;
       mesh.rotation.y += 0.01;
+
+      // Highlight animations for locked planet
+      if (lockedPlanet === mesh) {
+        const t = ts * 0.003;
+        data.glowMesh.scale.setScalar(1 + Math.sin(t * 1.5) * 0.15); // Pulsate aura
+        data.targetRing.quaternion.copy(camera.quaternion); // Always face camera
+        data.targetRing.rotation.z += t * 0.2; // Extra 2D spin
+        
+        data.bracketMesh.rotation.x += 0.005;
+        data.bracketMesh.rotation.y += 0.008;
+      }
     });
 
     // Lerp camera angle
@@ -302,4 +362,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   animate();
+
+  // Initialize GlareHover on the two main UI glass panels
+  if (typeof GlareHover !== 'undefined') {
+    new GlareHover('.control-panel', {
+      glareColor: "#ffffff",
+      glareOpacity: 0.3,
+      glareAngle: -30,
+      glareSize: 300,
+      transitionDuration: 800,
+      playOnce: false
+    });
+
+    new GlareHover('.edu-panel', {
+      glareColor: "#ffffff",
+      glareOpacity: 0.3,
+      glareAngle: -30,
+      glareSize: 300,
+      transitionDuration: 800,
+      playOnce: false
+    });
+  }
 });
